@@ -6,7 +6,7 @@
 - **카메라 앱** (`apps/mobile`): 찍으면 바로 노래가 된다. 필터, 보관함, 유료 필터 결제 시트 (Capacitor → iOS/Android)
 - **공통 엔진** (`packages/*`): 웹과 앱이 같은 코드로 변환한다. 같은 사진과 같은 설정이면 같은 노래가 나온다.
 
-제품 문서: [docs/PRD.md](docs/PRD.md) · 이름 검토: [docs/naming.md](docs/naming.md)
+제품 문서: [PRD](docs/PRD.md) · [컨셉과 방향 (롤모델: 오타마톤)](docs/concept.md) · [악보 이미지 형식 v1 초안](docs/spec/score-format-v1-draft.md) · [이름 검토](docs/naming.md)
 
 ## 구조
 
