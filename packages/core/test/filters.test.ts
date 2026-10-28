@@ -157,3 +157,19 @@ describe('메타정보', () => {
     expect(settingsFromMeta({ app: 'bitsori', version: 1, filter: 'lofi', key: 4, mode: 'minor' })).toMatchObject({ key: 4, mode: 'minor' });
   });
 });
+
+describe('악기', () => {
+  it('필터마다 어울리는 악기가 정해져 있다', () => {
+    expect(FILTERS.filter((f) => f.id !== 'none').every((f) => !!f.suggested.instrument)).toBe(true);
+  });
+  it('MIDI에 악기 번호가 들어간다 (바이올린 = 40)', () => {
+    const score = buildScore(toSample(fakeImage(8, 4, 1)), pop);
+    const bytes = scoreToMidi(score, { bpm: 100, unit: '8n', meta: {}, instrument: 'violin' });
+    const hex = Buffer.from(bytes).toString('hex');
+    expect(hex).toContain('c028'); // 채널 0 프로그램 체인지 40
+  });
+  it('모르는 악기 이름은 메타정보에서 버린다', () => {
+    expect(settingsFromMeta({ app: 'bitsori', version: 1, instrument: 'kazoo' }).instrument).toBeUndefined();
+    expect(settingsFromMeta({ app: 'bitsori', version: 1, instrument: 'harp' }).instrument).toBe('harp');
+  });
+});

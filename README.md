@@ -47,6 +47,7 @@ pnpm build
 | 필터 | 음계 종류 + 반주 스타일 + 추천 설정. 원본·팝은 무료, 로파이·몽환·오르골·시네마는 앱에서 유료 (웹은 모두 무료) |
 | 사진이 정하는 것 | 조(주된 색), 장·단조(밝기·따뜻함), 빠르기 ±15%와 드럼 밀도(복잡함), 코드 진행(멜로디에 맞춘 자동 화성), 음 세기(채도) |
 | 필터 강도 | 0~100%. 낮을수록 반주가 작아지고 사진 고유의 화성이 살아난다 |
+| 악기 | 피아노·나일론 기타·바이올린·하프·실로폰(녹음 샘플, 고를 때만 불러옴), 일렉트릭 피아노·신스(합성음). 필터를 고르면 어울리는 악기로 바뀐다 |
 | 메타정보 | PNG 내부 텍스트 영역(iTXt, 키워드 `bitsori`)과 MIDI 텍스트 이벤트(`bitsori:{…}`)에 설정을 JSON으로 저장 |
 
 자세한 내용은 PRD의 부록과 `packages/core/src`의 주석에 있다.
@@ -72,4 +73,12 @@ iOS는 `ios/App/App/Info.plist`에 카메라 권한 문구(`NSCameraUsageDescrip
 
 ## 라이선스·출처
 
-피아노 소리: Salamander Grand Piano V3 by Alexander Holm, [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) (`packages/audio/samples/ATTRIBUTION.md`)
+- 피아노: Salamander Grand Piano V3 by Alexander Holm
+- 기타·바이올린·하프·실로폰: [tonejs-instruments](https://github.com/nbrosowsky/tonejs-instruments) by Nicholaus P. Brosowsky
+
+모두 [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)이며 자세한 내용은 `packages/audio/samples/ATTRIBUTION.md`에 있다.
+
+**새 악기 추가하기**
+1. `packages/core/src/instruments.ts`에 이름과 MIDI 번호를 넣는다.
+2. `packages/audio/src/instruments.ts`에 같은 id로 소리를 만든다.
+3. 샘플이 있으면 `packages/audio/samples/<폴더>/`에 넣는다.

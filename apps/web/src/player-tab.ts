@@ -130,7 +130,7 @@ function applySettings(s: Partial<Settings>) {
   }
   if (s.instrument && INSTRUMENTS[s.instrument] && s.instrument !== els.instrument.value) {
     els.instrument.value = s.instrument;
-    player.loadInstrument(s.instrument);
+    changeInstrument(s.instrument);
   }
   if (s.key !== undefined) els.key.value = String(s.key);
   if (s.mode !== undefined) els.mode.value = s.mode;
@@ -156,6 +156,17 @@ function currentMeta(): BitsoriMeta {
     lines: state.score!.lineCount,
     source: 'web',
   };
+}
+
+/** 악기 바꾸기: 재생 중이어도 멈추지 않고, 새 악기를 불러오는 대로 이어서 연주한다 */
+async function changeInstrument(id: string) {
+  setStatus(`${INSTRUMENTS[id]?.label ?? '악기'} 소리 불러오는 중…`);
+  await player.loadInstrument(id);
+  if (player.instrumentId !== id) return; // 그새 다른 악기를 골랐다
+  if (player.state === 'playing') setStatus('연주 중');
+  else if (player.state === 'paused') setStatus('일시정지');
+  else if (state.score) setStatus(readyText());
+  else setStatus('');
 }
 
 // ---------- 필터 ----------
@@ -431,7 +442,7 @@ async function savePng() {
 
 function saveMidi() {
   const meta = currentMeta();
-  const bytes = scoreToMidi(state.score!, { bpm: meta.bpm, unit: meta.unit, meta, title: baseName(state.fileName), filter: meta.filter, strength: meta.strength });
+  const bytes = scoreToMidi(state.score!, { bpm: meta.bpm, unit: meta.unit, meta, title: baseName(state.fileName), filter: meta.filter, strength: meta.strength, instrument: meta.instrument });
   download(new Blob([bytes as BlobPart], { type: 'audio/midi' }), `${baseName(state.fileName)}-bitsori.mid`);
 }
 
@@ -614,10 +625,7 @@ export function initPlayerTab() {
   // 조·장단조가 바뀌면 멜로디 음이 바뀌지만 칸 배치는 같아서 재생을 이어간다
   [els.key, els.mode].forEach((sel) => sel.addEventListener('change', () => rebuildScore()));
 
-  els.instrument.addEventListener('change', () => {
-    player.pause();
-    player.loadInstrument(els.instrument.value);
-  });
+  els.instrument.addEventListener('change', () => changeInstrument(els.instrument.value));
 
   els.playBtn.addEventListener('click', () => (player.state === 'playing' ? player.pause() : play()));
   els.stopBtn.addEventListener('click', stop);

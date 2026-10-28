@@ -53,7 +53,7 @@ export interface FilterDef {
   drums: DrumPattern | null;
   /** 잔향 비율 0~1 */
   reverb: number;
-  /** 필터를 고를 때 함께 적용하는 설정 (빠르기는 사진에 맞춰 조금 달라진다) */
+  /** 필터를 고를 때 함께 적용하는 설정 — 어울리는 악기 포함 (빠르기는 사진에 맞춰 조금 달라진다) */
   suggested: Partial<Settings>;
 }
 
@@ -68,31 +68,31 @@ export const FILTERS: FilterDef[] = [
     id: 'pop', tier: 'free', label: '팝', emoji: '🎈', description: '5음계 · 베이스·코드·드럼',
     scale: 'pentatonic', mode: 'auto', chords: 'triad', template: [1, 5, 6, 4], barsPerChord: 1,
     bass: 'rootFifth', pad: 'sustain', drums: 'pop', reverb: 0.15,
-    suggested: { bpm: 108, unit: '8n', chord: 2, startOct: 4, endOct: 5 },
+    suggested: { bpm: 108, unit: '8n', chord: 2, startOct: 4, endOct: 5, instrument: 'piano' },
   },
   {
     id: 'lofi', tier: 'premium', label: '로파이', emoji: '☕', description: '7화음 · 느긋한 비트',
     scale: 'pentatonic', mode: 'auto', chords: 'seventh', template: [2, 5, 1, 6], barsPerChord: 1,
     bass: 'half', pad: 'sustain', drums: 'lofi', reverb: 0.22,
-    suggested: { bpm: 80, unit: '8n', chord: 2, startOct: 3, endOct: 5 },
+    suggested: { bpm: 80, unit: '8n', chord: 2, startOct: 3, endOct: 5, instrument: 'epiano' },
   },
   {
     id: 'dream', tier: 'premium', label: '몽환', emoji: '🌙', description: '긴 7화음 · 드럼 없이 넓은 잔향',
     scale: 'pentatonic', mode: 'auto', chords: 'seventh', template: [4, 1], barsPerChord: 2,
     bass: 'whole', pad: 'sustain', drums: null, reverb: 0.4,
-    suggested: { bpm: 72, unit: '8n', chord: 3, startOct: 4, endOct: 6 },
+    suggested: { bpm: 72, unit: '8n', chord: 3, startOct: 4, endOct: 6, instrument: 'harp' },
   },
   {
     id: 'musicbox', tier: 'premium', label: '오르골', emoji: '🎠', description: '높은 음역 · 장조 분산화음',
     scale: 'diatonic', mode: 'major', chords: 'triad', template: [1, 4, 5, 1], barsPerChord: 1,
     bass: null, pad: 'arp', drums: null, reverb: 0.25,
-    suggested: { bpm: 96, unit: '16n', chord: 1, startOct: 5, endOct: 6 },
+    suggested: { bpm: 96, unit: '16n', chord: 1, startOct: 5, endOct: 6, instrument: 'xylophone' },
   },
   {
     id: 'cinema', tier: 'premium', label: '시네마', emoji: '🎬', description: '단조 · 웅장한 패드',
     scale: 'pentatonic', mode: 'minor', chords: 'triad', template: [1, 6, 3, 7], barsPerChord: 2,
     bass: 'whole', pad: 'sustain', drums: null, reverb: 0.32,
-    suggested: { bpm: 76, unit: '8n', chord: 3, startOct: 3, endOct: 5 },
+    suggested: { bpm: 76, unit: '8n', chord: 3, startOct: 3, endOct: 5, instrument: 'violin' },
   },
 ];
 

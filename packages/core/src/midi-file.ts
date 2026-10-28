@@ -26,6 +26,8 @@ export interface ParsedMidi {
 export interface MidiVoice {
   name: string;
   channel: number;
+  /** General MIDI 악기 번호 (기본 0 = 피아노) */
+  program?: number;
   notes: { midi: number; tick: number; dur: number; velocity: number }[];
 }
 
@@ -173,7 +175,7 @@ export function writeMidi({
     const ch = v.channel & 0x0f;
     const events: Ev[] = [
       { tick: 0, order: 0, data: metaEvent(0x03, encoder.encode(v.name)) },
-      { tick: 0, order: 0, data: [0xc0 | ch, 0] }, // 피아노
+      { tick: 0, order: 0, data: [0xc0 | ch, (v.program ?? 0) & 0x7f] }, // 악기
     ];
     for (const n of v.notes) {
       events.push({ tick: n.tick, order: 2, data: [0x90 | ch, n.midi, n.velocity] });

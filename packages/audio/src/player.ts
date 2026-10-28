@@ -39,6 +39,8 @@ export class ScorePlayer {
   private band: BackingBand | null = null;
   private instrument: MelodyInstrument | null = null;
   private instrumentKey = DEFAULT_INSTRUMENT;
+  /** 악기를 바꾸는 중에는 아직 불러오지 않은 악기를 치지 않는다 */
+  private instrumentReady = false;
   private loading: Promise<void> | null = null;
   private readonly samplesBaseUrl: string;
 
@@ -48,6 +50,11 @@ export class ScorePlayer {
 
   get totalSteps() {
     return this.score?.totalSteps ?? 0;
+  }
+
+  /** 지금 악기 id */
+  get instrumentId() {
+    return this.instrumentKey;
   }
 
   get hasScore() {
@@ -103,10 +110,15 @@ export class ScorePlayer {
       this.instrument.releaseAll?.();
       this.instrument.dispose();
     }
-    this.instrument = def.create(this.samplesBaseUrl);
-    this.instrument.connect(this.ensureOutput());
-    this.loading = Tone.loaded();
-    return this.loading;
+    const instrument = def.create(this.samplesBaseUrl);
+    instrument.connect(this.ensureOutput());
+    this.instrument = instrument;
+    this.instrumentReady = false;
+    const loading = Tone.loaded().then(() => {
+      if (this.instrument === instrument) this.instrumentReady = true;
+    });
+    this.loading = loading;
+    return loading;
   }
 
   ready(): Promise<void> {
@@ -214,7 +226,7 @@ export class ScorePlayer {
 
     const sec = Tone.Time(this.unit).toSeconds();
     const events = score.starts[this.stepIndex];
-    if (events && this.instrument) {
+    if (events && this.instrument && this.instrumentReady) {
       // 픽셀 채도로 정한 세기 × 동시에 울리는 음이 많으면 조금씩 작게
       const share = Math.min(1, 1.1 / Math.sqrt(events.length));
       for (const e of events) this.instrument.triggerAttackRelease(e.note, e.dur * sec, time, e.velocity * share);
@@ -226,8 +238,9 @@ export class ScorePlayer {
       for (const n of b.bass) band.bass.triggerAttackRelease(midiToName(n.midi), n.dur * sec * 0.95, time, n.velocity);
       for (const n of b.pad) {
         // 분산화음(오르골)은 멜로디 악기로, 지속 화음은 패드로
-        if (this.filter.pad === 'arp' && this.instrument) this.instrument.triggerAttackRelease(midiToName(n.midi), n.dur * sec, time, n.velocity);
-        else band.pad.triggerAttackRelease(midiToName(n.midi), n.dur * sec, time, n.velocity);
+        if (this.filter.pad === 'arp' && this.instrument) {
+          if (this.instrumentReady) this.instrument.triggerAttackRelease(midiToName(n.midi), n.dur * sec, time, n.velocity);
+        } else band.pad.triggerAttackRelease(midiToName(n.midi), n.dur * sec, time, n.velocity);
       }
       for (const d of b.drums) band.drum(d.kind, time, d.velocity);
     }

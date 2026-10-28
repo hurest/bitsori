@@ -3,6 +3,7 @@ import {
   clampInt, isDirection, isUnit, type Direction, type Unit,
 } from './constants';
 import { FILTERS, type Mode } from './filters';
+import { INSTRUMENT_INFO } from './instruments';
 
 export interface RGB {
   r: number;
@@ -65,7 +66,7 @@ export function sanitizeSettings(input: Record<string, unknown>): Partial<Settin
   if (num(input.colorTolerance)) out.colorTolerance = clampInt(input.colorTolerance, 0, 50);
   if (num(input.bpm)) out.bpm = clampInt(input.bpm, MIN_BPM, MAX_BPM);
   if (isUnit(input.unit)) out.unit = input.unit;
-  if (typeof input.instrument === 'string') out.instrument = input.instrument;
+  if (typeof input.instrument === 'string' && INSTRUMENT_INFO.some((i) => i.id === input.instrument)) out.instrument = input.instrument;
   if (typeof input.filter === 'string' && FILTERS.some((f) => f.id === input.filter)) out.filter = input.filter;
   if (input.key === 'auto' || (num(input.key) && (input.key as number) >= 0 && (input.key as number) <= 11)) out.key = input.key === 'auto' ? 'auto' : Math.round(input.key as number);
   if (input.mode === 'auto' || input.mode === 'major' || input.mode === 'minor') out.mode = input.mode;

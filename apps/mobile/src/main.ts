@@ -1,7 +1,7 @@
 // 빛소리 카메라 앱: 찍으면 바로 노래가 된다.
 import './style.css';
 import {
-  DEFAULT_FILTER_ID, DEFAULT_SETTINGS, FILTERS, META_APP, META_VERSION,
+  DEFAULT_FILTER_ID, DEFAULT_SETTINGS, FILTERS, INSTRUMENT_INFO, META_APP, META_VERSION,
   buildScore, clampInt, detectCellSize, getFilter, keyLabel, settingsFromMeta, tempoFromPhoto,
   type BitsoriMeta, type Score, type Settings,
 } from '@bitsori/core';
@@ -23,7 +23,7 @@ const els = {
   libraryBackBtn: $('libraryBackBtn'), libraryGrid: $('libraryGrid'), libraryEmpty: $('libraryEmpty'),
   paywall: $('paywall'), paywallEmoji: $('paywallEmoji'), paywallTitle: $('paywallTitle'), paywallDesc: $('paywallDesc'),
   buyBtn: $<HTMLButtonElement>('buyBtn'), restoreBtn: $('restoreBtn'), paywallClose: $('paywallClose'),
-  toast: $('toast'), strength: $<HTMLInputElement>('strength'), strengthLabel: $('strengthLabel'),
+  toast: $('toast'), instruments: $('instruments'), strength: $<HTMLInputElement>('strength'), strengthLabel: $('strengthLabel'),
 };
 const viewCtx = els.view.getContext('2d')!;
 
@@ -182,6 +182,7 @@ function rebuild() {
   state.settings.mode = state.score.mode;
   player.setStrength(state.settings.strength);
   player.setFilter(state.settings.filter);
+  if (player.instrumentId !== state.settings.instrument) player.loadInstrument(state.settings.instrument);
   player.setTempo(state.settings.bpm);
   player.setUnit(state.settings.unit);
   player.setScore(state.score);
@@ -200,6 +201,7 @@ function rebuild() {
   els.strength.closest('label')!.setAttribute('aria-disabled', String(!f.template.length));
   els.strength.disabled = !f.template.length;
   renderFilters();
+  renderInstruments();
 }
 
 async function openResult(autoplay: boolean) {
@@ -297,6 +299,25 @@ async function buy() {
     }
   } finally {
     els.buyBtn.disabled = false;
+  }
+}
+
+// ---------- 악기 ----------
+function renderInstruments() {
+  els.instruments.innerHTML = '';
+  for (const info of INSTRUMENT_INFO) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'instrument';
+    b.classList.toggle('active', info.id === state.settings.instrument);
+    b.setAttribute('aria-pressed', String(info.id === state.settings.instrument));
+    b.textContent = `${info.emoji} ${info.label}`;
+    b.addEventListener('click', async () => {
+      state.settings.instrument = info.id;
+      renderInstruments();
+      await player.loadInstrument(info.id); // 재생은 멈추지 않고, 불러오는 대로 새 악기로 이어진다
+    });
+    els.instruments.appendChild(b);
   }
 }
 

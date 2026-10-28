@@ -111,3 +111,12 @@ button { font: inherit; color: inherit; }
 .strength-row input { flex: 1; accent-color: var(--accent); }
 .strength-row b { min-width: 40px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
 .strength-row[aria-disabled="true"] { opacity: .4; }
+
+/* 악기 */
+.instrument-strip { display: flex; gap: 8px; overflow-x: auto; padding: 0 16px 10px; scrollbar-width: none; }
+.instrument-strip::-webkit-scrollbar { display: none; }
+.instrument {
+  appearance: none; flex: 0 0 auto; display: flex; align-items: center; gap: 4px; padding: 6px 12px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--panel); font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.instrument.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 30%, var(--panel)); }
