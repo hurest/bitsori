@@ -105,3 +105,9 @@ button { font: inherit; color: inherit; }
   position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 160px); transform: translateX(-50%); z-index: 20;
   background: rgba(20, 18, 32, 0.92); padding: 10px 16px; border-radius: 999px; font-size: 13px; white-space: nowrap;
 }
+
+/* 필터 강도 */
+.strength-row { display: flex; align-items: center; gap: 12px; padding: 0 20px 10px; font-size: 13px; color: var(--muted); }
+.strength-row input { flex: 1; accent-color: var(--accent); }
+.strength-row b { min-width: 40px; text-align: right; color: var(--text); font-variant-numeric: tabular-nums; }
+.strength-row[aria-disabled="true"] { opacity: .4; }

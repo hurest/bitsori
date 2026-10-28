@@ -23,13 +23,25 @@ export interface BitsoriMeta extends Settings {
   voiceTracks?: boolean;
 }
 
+// 조·장단조가 사진에서 정해지기 전(v0.1)의 필터는 조가 고정이었다
+const LEGACY_FILTER_KEYS: Record<string, [number, 'major' | 'minor']> = {
+  pop: [0, 'major'], lofi: [0, 'major'], dream: [0, 'major'], musicbox: [0, 'major'], cinema: [9, 'minor'],
+};
+
 /**
  * 메타정보 → 적용할 설정.
- * 필터가 생기기 전(필드 없음)에 저장된 파일은 '원본' 필터로 만든 것이므로 그렇게 읽는다.
+ * - 필터가 생기기 전(필드 없음)에 저장된 파일은 '원본' 필터로 만든 것이므로 그렇게 읽는다.
+ * - 조가 저장되지 않은 필터 파일은 그때의 고정 조로 읽는다. 그래야 같은 멜로디가 난다.
  */
 export function settingsFromMeta(meta: Record<string, unknown>): Partial<Settings> {
   const s = sanitizeSettings(meta);
-  return { ...s, filter: s.filter ?? 'none' };
+  const filter = s.filter ?? 'none';
+  const legacy = LEGACY_FILTER_KEYS[filter];
+  if (legacy && s.key === undefined) {
+    s.key = legacy[0];
+    s.mode ??= legacy[1];
+  }
+  return { ...s, filter };
 }
 
 export function isBitsoriMeta(v: unknown): v is Partial<BitsoriMeta> & { app: string } {

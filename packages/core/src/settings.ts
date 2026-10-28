@@ -2,7 +2,7 @@ import {
   DEFAULT_REST_THRESHOLD, MAX_BPM, MAX_CHORD, MAX_OCT, MIN_BPM, MIN_OCT,
   clampInt, isDirection, isUnit, type Direction, type Unit,
 } from './constants';
-import { FILTERS } from './filters';
+import { FILTERS, type Mode } from './filters';
 
 export interface RGB {
   r: number;
@@ -25,6 +25,12 @@ export interface Settings {
   instrument: string;
   /** 음악 필터 id (filters.ts) */
   filter: string;
+  /** 조(0=C … 11=B). 'auto'면 사진의 색으로 정한다 */
+  key: number | 'auto';
+  /** 장조/단조. 'auto'면 사진의 밝기·따뜻함으로 정한다 (필터가 고정한 경우 제외) */
+  mode: Mode | 'auto';
+  /** 필터 강도 0~100: 낮을수록 반주가 작고, 필터 고유 진행보다 사진(멜로디)에 맞춘 코드를 따른다 */
+  strength: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -39,6 +45,9 @@ export const DEFAULT_SETTINGS: Settings = {
   unit: '8n',
   instrument: 'piano',
   filter: 'none',
+  key: 'auto',
+  mode: 'auto',
+  strength: 70,
 };
 
 /** 외부에서 온 값(메타정보 등)에서 올바른 설정만 골라낸다. 잘못된 값은 버린다. */
@@ -58,6 +67,9 @@ export function sanitizeSettings(input: Record<string, unknown>): Partial<Settin
   if (isUnit(input.unit)) out.unit = input.unit;
   if (typeof input.instrument === 'string') out.instrument = input.instrument;
   if (typeof input.filter === 'string' && FILTERS.some((f) => f.id === input.filter)) out.filter = input.filter;
+  if (input.key === 'auto' || (num(input.key) && (input.key as number) >= 0 && (input.key as number) <= 11)) out.key = input.key === 'auto' ? 'auto' : Math.round(input.key as number);
+  if (input.mode === 'auto' || input.mode === 'major' || input.mode === 'minor') out.mode = input.mode;
+  if (num(input.strength)) out.strength = clampInt(input.strength, 0, 100);
   if (Array.isArray(input.restColors)) {
     out.restColors = input.restColors
       .filter((c): c is RGB => !!c && [c.r, c.g, c.b].every((v) => num(v) && v >= 0 && v <= 255))

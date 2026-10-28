@@ -65,6 +65,23 @@
         <h2>필터 <small class="h2-sub">(음계 + 반주 · 고르면 어울리는 설정도 함께 바뀌어요)</small></h2>
         <div id="filters" class="filter-chips" role="radiogroup" aria-label="필터"></div>
         <p id="filterInfo" class="info filter-info"></p>
+        <div id="filterControls" class="filter-controls">
+          <label class="field">
+            <span>필터 강도 <b id="strengthLabel">70%</b> <small>(낮출수록 반주가 작아지고 사진 고유의 화성이 살아나요)</small></span>
+            <input id="strength" type="range" min="0" max="100" value="70" />
+          </label>
+          <div class="field-row">
+            <label class="field">
+              <span>조 (키)</span>
+              <select id="key"><option value="auto">자동 (사진 색)</option><option value="0">C</option><option value="1">C#</option><option value="2">D</option><option value="3">Eb</option><option value="4">E</option><option value="5">F</option><option value="6">F#</option><option value="7">G</option><option value="8">Ab</option><option value="9">A</option><option value="10">Bb</option><option value="11">B</option></select>
+            </label>
+            <label class="field">
+              <span>장조 / 단조</span>
+              <select id="mode"><option value="auto">자동 (사진 밝기)</option><option value="major">장조</option><option value="minor">단조</option></select>
+            </label>
+          </div>
+          <p id="photoInfo" class="info photo-info"></p>
+        </div>
       </section>
 
       <section class="card size-card">

@@ -2,7 +2,7 @@
 import './style.css';
 import {
   DEFAULT_FILTER_ID, DEFAULT_SETTINGS, FILTERS, META_APP, META_VERSION,
-  buildScore, clampInt, detectCellSize, getFilter, settingsFromMeta,
+  buildScore, clampInt, detectCellSize, getFilter, keyLabel, settingsFromMeta, tempoFromPhoto,
   type BitsoriMeta, type Score, type Settings,
 } from '@bitsori/core';
 import { ScorePlayer } from '@bitsori/audio';
@@ -23,7 +23,7 @@ const els = {
   libraryBackBtn: $('libraryBackBtn'), libraryGrid: $('libraryGrid'), libraryEmpty: $('libraryEmpty'),
   paywall: $('paywall'), paywallEmoji: $('paywallEmoji'), paywallTitle: $('paywallTitle'), paywallDesc: $('paywallDesc'),
   buyBtn: $<HTMLButtonElement>('buyBtn'), restoreBtn: $('restoreBtn'), paywallClose: $('paywallClose'),
-  toast: $('toast'),
+  toast: $('toast'), strength: $<HTMLInputElement>('strength'), strengthLabel: $('strengthLabel'),
 };
 const viewCtx = els.view.getContext('2d')!;
 
@@ -32,6 +32,9 @@ const GRID_WIDTH = 32;
 
 // TODO: 스토어 결제 연동 시 실제 PurchaseProvider로 교체 (RevenueCat 또는 Capacitor 결제 플러그인)
 const entitlements = new Entitlements(new DevPurchaseProvider());
+
+/** 필터 강도 (필터를 바꿔도 유지) */
+let strength = DEFAULT_SETTINGS.strength;
 
 const state = {
   filter: DEFAULT_FILTER_ID,
@@ -46,6 +49,8 @@ const state = {
   step: 0,
   /** 공유받은 작품이면 그 필터가 잠겨 있어도 감상할 수 있다 */
   shared: false,
+  /** 새 사진이면 사진 복잡함에 맞춰 빠르기를 정한다 (저장된 작품은 그대로) */
+  photoTempo: true,
 };
 
 const player = new ScorePlayer({
@@ -62,9 +67,10 @@ const player = new ScorePlayer({
   },
 });
 
+/** 필터의 추천 설정. 조·장단조는 사진이 정한다 (key·mode = auto) */
 function settingsFor(filterId: string): Settings {
   const f = getFilter(filterId);
-  return { ...DEFAULT_SETTINGS, ...f.suggested, filter: f.id };
+  return { ...DEFAULT_SETTINGS, ...f.suggested, filter: f.id, strength };
 }
 
 const clock = (sec: number) => {
@@ -133,6 +139,7 @@ async function capture() {
   state.shared = false;
   if (!entitlements.canUse(state.filter)) state.filter = DEFAULT_FILTER_ID;
   state.settings = settingsFor(state.filter);
+  state.photoTempo = true;
   state.source = { image: frame, width: side, height: side, cell: 1, source: 'camera' };
   openResult(true);
 }
@@ -145,6 +152,8 @@ async function openImage(file: Blob, source: 'gallery' | 'library') {
     // 빛소리로 만든 작품: 저장된 설정 그대로
     state.settings = { ...DEFAULT_SETTINGS, ...settingsFromMeta(meta) };
     state.filter = state.settings.filter;
+    state.photoTempo = false;
+    setStrength(state.settings.strength);
     state.shared = !entitlements.canUse(state.filter);
     const cell = clampInt(meta.cell ?? 1, 1, 64);
     state.source = { image: img, width: w, height: img.naturalHeight, cell: w % cell === 0 ? cell : 1, source };
@@ -152,6 +161,7 @@ async function openImage(file: Blob, source: 'gallery' | 'library') {
     state.shared = false;
     if (!entitlements.canUse(state.filter)) state.filter = DEFAULT_FILTER_ID;
     state.settings = settingsFor(state.filter);
+    state.photoTempo = true;
     const pixels = imagePixels(img);
     state.source = { image: img, width: w, height: img.naturalHeight, cell: pixels ? detectCellSize(pixels) : 1, source };
   }
@@ -165,6 +175,12 @@ function rebuild() {
   const targetWidth = exact ? src.width / src.cell : Math.min(GRID_WIDTH, src.width);
   state.sampled = sampleImage(src.image, src.width, src.height, targetWidth, exact);
   state.score = buildScore(state.sampled.sample, state.settings);
+  const f = getFilter(state.filter);
+  if (state.photoTempo && f.suggested.bpm) state.settings.bpm = tempoFromPhoto(f.suggested.bpm, state.score.features);
+  // 사진에서 정해진 조·장단조를 기록해 둔다 (저장하면 다시 열어도 같은 멜로디)
+  state.settings.key = state.score.key;
+  state.settings.mode = state.score.mode;
+  player.setStrength(state.settings.strength);
   player.setFilter(state.settings.filter);
   player.setTempo(state.settings.bpm);
   player.setUnit(state.settings.unit);
@@ -177,10 +193,12 @@ function rebuild() {
   draw();
   els.timeLabel.textContent = clock(0);
   els.totalLabel.textContent = clock(state.score.totalSteps * player.stepSeconds);
-  const f = getFilter(state.filter);
+  const tune = f.scale === 'chromatic' ? '반음 12개 그대로' : `${keyLabel(state.score.key, state.score.mode)} · ${state.settings.bpm} BPM`;
   els.resultNote.textContent = state.shared
-    ? `${f.emoji} ${f.label} 필터로 만든 작품이에요 — 감상은 무료`
-    : `${f.emoji} ${f.label} · ${f.description}`;
+    ? `${f.emoji} ${f.label} 필터로 만든 작품이에요 — 감상은 무료 · ${tune}`
+    : `${f.emoji} ${f.label} · 이 사진은 ${tune}`;
+  els.strength.closest('label')!.setAttribute('aria-disabled', String(!f.template.length));
+  els.strength.disabled = !f.template.length;
   renderFilters();
 }
 
@@ -249,8 +267,9 @@ async function chooseFilter(id: string) {
   state.filter = id;
   state.shared = false;
   if (els.resultScreen.hidden || !state.source) return renderFilters();
-  // 결과 화면: 같은 사진에 새 필터를 입혀 처음부터 다시 재생
+  // 결과 화면: 같은 사진에 새 필터를 입혀 처음부터 다시 재생 (조·빠르기는 다시 사진에 맞춘다)
   state.settings = settingsFor(id);
+  state.photoTempo = true;
   rebuild();
   await player.play();
 }
@@ -279,6 +298,12 @@ async function buy() {
   } finally {
     els.buyBtn.disabled = false;
   }
+}
+
+function setStrength(v: number) {
+  strength = v;
+  els.strength.value = String(v);
+  els.strengthLabel.textContent = `${v}%`;
 }
 
 // ---------- 보관함 ----------
@@ -332,6 +357,11 @@ els.restoreBtn.addEventListener('click', async () => {
 });
 els.paywallClose.addEventListener('click', () => { els.paywall.hidden = true; });
 entitlements.onChange(renderFilters);
+els.strength.addEventListener('input', () => setStrength(Number(els.strength.value)));
+els.strength.addEventListener('change', () => {
+  state.settings.strength = strength;
+  player.setStrength(strength); // 반주만 바뀌므로 재생을 이어간다
+});
 
 renderFilters();
 player.ready(); // 피아노 소리를 미리 받아 둔다 (첫 촬영 후 바로 재생되도록)

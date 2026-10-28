@@ -15,7 +15,7 @@ const DRUM_CHANNEL = 9;
  */
 export function scoreToMidi(
   score: Score,
-  { bpm, unit, meta, title, filter }: { bpm: number; unit: Unit; meta: object; title?: string; filter?: string },
+  { bpm, unit, meta, title, filter, strength = 70 }: { bpm: number; unit: Unit; meta: object; title?: string; filter?: string; strength?: number },
 ) {
   const ppq = 480;
   const stepTicks = ppq * UNIT_BEATS[unit];
@@ -27,11 +27,11 @@ export function scoreToMidi(
   score.starts.forEach((events, step) => {
     if (!events) return;
     for (const e of events) {
-      voices[e.voice].notes.push({ midi: e.midi, tick: step * stepTicks, dur: e.dur * stepTicks, velocity: 80 });
+      voices[e.voice].notes.push({ midi: e.midi, tick: step * stepTicks, dur: e.dur * stepTicks, velocity: Math.round(e.velocity * 127) });
     }
   });
 
-  const backing = arrange(score.totalSteps, unit, getFilter(filter));
+  const backing = arrange(score, unit, getFilter(filter), { strength });
   const vel = (v: number) => Math.round(v * 127);
   const toNotes = (list: typeof backing.bass) =>
     list.map((n) => ({ midi: n.midi, tick: n.step * stepTicks, dur: n.dur * stepTicks, velocity: vel(n.velocity) }));

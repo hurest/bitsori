@@ -1,7 +1,7 @@
 // "MIDI → 사진" 탭
 import {
   DEFAULT_REST_THRESHOLD, MAX_CHORD, MAX_OCT, MIN_BPM, MAX_BPM, META_APP, META_VERSION, MIN_OCT, SOLFEGE, UNIT_BEATS,
-  clampInt, getFilter, isUnit, midiToImage as M, midiToName, parseMidi,
+  clampInt, getFilter, isUnit, midiToImage as M, midiToName, parseMidi, scaleOf, settingsFromMeta,
   type ColorMode, type Direction, type ParsedMidi, type Quantized, type Unit,
 } from '@bitsori/core';
 import { baseName, canvasToPngBlob, download, pixelsToCanvas, upscale, viewScale } from '@bitsori/browser';
@@ -121,16 +121,20 @@ function convert() {
   const length = clampInt(els.length.value, 1, 4096);
   els.lengthLabel.textContent = `${length}칸`;
 
-  // 빛소리 MIDI는 저장할 때의 필터 음계로 되돌린다. 일반 MIDI는 반음계.
-  const filter = getFilter(meta?.filter ?? 'none');
+  // 빛소리 MIDI는 저장할 때의 필터 음계·조로 되돌린다. 일반 MIDI는 반음계.
+  const saved = meta ? settingsFromMeta(meta as Record<string, unknown>) : {};
+  const filter = getFilter(saved.filter ?? 'none');
+  const mode = filter.mode !== 'auto' ? filter.mode : saved.mode === 'minor' ? 'minor' : 'major';
+  const key = typeof saved.key === 'number' ? saved.key : 0;
+  const scale = scaleOf(filter.scale, mode);
   const sameLayout = !!meta && meta.direction === direction && meta.chord === chord && meta.length === length;
   const img = M.render({
     grid, steps: q.steps, chord, startOct, endOct, direction, length,
     lines: sameLayout ? meta!.lines : undefined,
     colorMode: radio('midiColor') as ColorMode,
     restThreshold: DEFAULT_REST_THRESHOLD,
-    scale: filter.scale,
-    key: filter.key,
+    scale,
+    key: scale === 'chromatic' ? 0 : key,
   });
   const canvas = pixelsToCanvas(img);
 
@@ -141,7 +145,7 @@ function convert() {
       app: META_APP, version: META_VERSION,
       direction, chord, length, lines: img.lineCount, startOct, endOct, bpm, unit,
       restThreshold: DEFAULT_REST_THRESHOLD, restColors: [], colorTolerance: 12,
-      instrument: 'piano', filter: filter.id, source: 'midi',
+      instrument: 'piano', filter: filter.id, key, mode, strength: saved.strength ?? 70, source: 'midi',
     },
   };
 

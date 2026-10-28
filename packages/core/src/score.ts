@@ -1,5 +1,6 @@
+import { analyzePhoto, hueSat, keyFromPhoto, modeFromPhoto, velocityFromSaturation, type PhotoFeatures } from './analyze';
 import { brightnessToIndex, midiToName, type Direction } from './constants';
-import { getFilter, pitchTable } from './filters';
+import { getFilter, pitchTable, scaleOf, type Mode, type ScaleId } from './filters';
 import type { Sample } from './pixels';
 import type { RGB, Settings } from './settings';
 
@@ -12,6 +13,8 @@ export interface ScoreEvent {
   dur: number;
   /** 화음 안의 줄 번호(0 ~ chord-1) */
   voice: number;
+  /** 세기 0~1 (픽셀의 채도) */
+  velocity: number;
 }
 
 export interface Score {
@@ -34,12 +37,17 @@ export interface Score {
   lowNote: string;
   highNote: string;
   noteCount: number;
+  /** 실제로 쓴 조·장단조·음계 (자동이면 사진에서 정한 값) */
+  key: number;
+  mode: Mode;
+  scale: ScaleId;
+  features: PhotoFeatures;
 }
 
 export type ScoreOptions = Pick<
   Settings,
   'chord' | 'startOct' | 'endOct' | 'restThreshold' | 'restColors' | 'colorTolerance' | 'direction'
-> & { filter?: string };
+> & Partial<Pick<Settings, 'filter' | 'key' | 'mode'>>;
 
 /**
  * 재생 방향별 줄 구성
@@ -99,7 +107,11 @@ export function buildScore(sample: Sample, opts: ScoreOptions): Score {
   const vertical = direction === 'vertical';
   const restMask = buildRestMask(sample, restThreshold, restColors, colorTolerance);
   const filter = getFilter(opts.filter);
-  const table = pitchTable(startOct, endOct, filter.scale, filter.key);
+  const features = analyzePhoto(sample);
+  const key = opts.key === undefined || opts.key === 'auto' ? keyFromPhoto(features) : opts.key;
+  const mode = filter.mode !== 'auto' ? filter.mode : opts.mode === undefined || opts.mode === 'auto' ? modeFromPhoto(features, filter) : opts.mode;
+  const scale = scaleOf(filter.scale, mode);
+  const table = pitchTable(startOct, endOct, scale, scale === 'chromatic' ? 0 : key);
   const noteCount = table.length;
   const groups = Math.ceil(lineCount / chord);
   const totalSteps = groups * length;
@@ -125,7 +137,9 @@ export function buildScore(sample: Sample, opts: ScoreOptions): Score {
           current.dur++;
           continue;
         }
-        current = { idx, midi: table[idx], note: midiToName(table[idx]), dur: 1, voice: v };
+        const p = i * 4;
+        const velocity = velocityFromSaturation(hueSat(sample.data[p], sample.data[p + 1], sample.data[p + 2])[1]);
+        current = { idx, midi: table[idx], note: midiToName(table[idx]), dur: 1, voice: v, velocity };
         const step = g * length + pos;
         (starts[step] ??= []).push(current);
         noteEvents++;
@@ -140,5 +154,6 @@ export function buildScore(sample: Sample, opts: ScoreOptions): Score {
     lowNote: midiToName(table[0]),
     highNote: midiToName(table[noteCount - 1]),
     noteCount,
+    key, mode, scale, features,
   };
 }

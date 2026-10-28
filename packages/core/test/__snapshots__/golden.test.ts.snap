@@ -10,7 +10,10 @@ exports[`golden > 기본 설정 1`] = `
 
 exports[`golden > 필터: 로파이 1`] = `
 {
-  "digest": "72bb9264",
+  "chords": "25262522213222666616252665366512261622122636",
+  "digest": "4f8607db",
+  "key": 7,
+  "mode": "major",
   "notes": 163,
   "steps": 352,
 }
@@ -18,7 +21,10 @@ exports[`golden > 필터: 로파이 1`] = `
 
 exports[`golden > 필터: 몽환 1`] = `
 {
-  "digest": "8cb55d3c",
+  "chords": "22424666434143",
+  "digest": "71ef2774",
+  "key": 7,
+  "mode": "major",
   "notes": 163,
   "steps": 224,
 }
@@ -26,7 +32,10 @@ exports[`golden > 필터: 몽환 1`] = `
 
 exports[`golden > 필터: 시네마 1`] = `
 {
-  "digest": "8634c815",
+  "chords": "16311331163714",
+  "digest": "b533e46b",
+  "key": 7,
+  "mode": "minor",
   "notes": 163,
   "steps": 224,
 }
@@ -34,7 +43,10 @@ exports[`golden > 필터: 시네마 1`] = `
 
 exports[`golden > 필터: 오르골 1`] = `
 {
-  "digest": "7f740903",
+  "chords": "115134551524543511514352144644246151255215",
+  "digest": "5ab664ae",
+  "key": 7,
+  "mode": "major",
   "notes": 163,
   "steps": 672,
 }
@@ -42,7 +54,10 @@ exports[`golden > 필터: 오르골 1`] = `
 
 exports[`golden > 필터: 원본 1`] = `
 {
+  "chords": "",
   "digest": "76041f88",
+  "key": 7,
+  "mode": "major",
   "notes": 167,
   "steps": 672,
 }
@@ -50,7 +65,10 @@ exports[`golden > 필터: 원본 1`] = `
 
 exports[`golden > 필터: 팝 1`] = `
 {
-  "digest": "7857279a",
+  "chords": "15651661561115615326155615641261166216611352",
+  "digest": "4087355a",
+  "key": 7,
+  "mode": "major",
   "notes": 161,
   "steps": 352,
 }

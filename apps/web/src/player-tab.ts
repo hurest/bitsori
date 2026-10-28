@@ -1,12 +1,12 @@
 // "사진 → 노래" 탭
 import {
   DEFAULT_FILTER_ID, DEFAULT_SETTINGS, FILTERS, MAX_CHORD, MAX_OCT, META_APP, META_VERSION, MIN_OCT,
-  buildScore, clampInt, countSteps, detectCellSize, getFilter, layout, scoreToMidi, settingsFromMeta,
-  stepSeconds, isUnit, type BitsoriMeta, type Direction, type RGB, type Score, type Settings,
+  arrange, buildScore, clampInt, countSteps, detectCellSize, getFilter, keyLabel, layout, scoreToMidi, settingsFromMeta,
+  stepSeconds, tempoFromPhoto, isUnit, type BitsoriMeta, type Direction, type Mode, type RGB, type Score, type Settings,
 } from '@bitsori/core';
 import { INSTRUMENTS, ScorePlayer } from '@bitsori/audio';
 import {
-  NoPurchaseProvider, DevPurchaseProvider, Entitlements, baseName, buildRestOverlay, canvasToPngBlob, download,
+  baseName, buildRestOverlay, canvasToPngBlob, download,
   drawScoreView, imagePixels, loadImageFile, sampleImage, stepAtPoint, upscale, viewScale, type SampledImage,
 } from '@bitsori/browser';
 import { $, fillOctaveSelect, formatClock, formatDuration, setupDropzone } from './format';
@@ -25,15 +25,15 @@ const els = {
   tolerance: $<HTMLInputElement>('tolerance'), toleranceLabel: $('toleranceLabel'), showRests: $<HTMLInputElement>('showRests'),
   metaBanner: $('metaBanner'), metaText: $('metaText'), metaResetBtn: $('metaResetBtn'),
   savePngBtn: $<HTMLButtonElement>('savePngBtn'), saveMidiBtn: $<HTMLButtonElement>('saveMidiBtn'),
-  filters: $('filters'), filterInfo: $('filterInfo'),
+  filters: $('filters'), filterInfo: $('filterInfo'), filterControls: $('filterControls'),
+  strength: $<HTMLInputElement>('strength'), strengthLabel: $('strengthLabel'),
+  key: $<HTMLSelectElement>('key'), mode: $<HTMLSelectElement>('mode'), photoInfo: $('photoInfo'),
 };
 const HINT_DEFAULT = els.hint.textContent ?? '';
 const viewCtx = els.view.getContext('2d')!;
 
-// 웹은 결제가 없다. 유료 필터는 앱에서 구매한다. (?dev 를 붙이면 개발용으로 모두 열림)
-const DEV_UNLOCK = new URLSearchParams(location.search).has('dev');
-const entitlements = new Entitlements(DEV_UNLOCK ? new DevPurchaseProvider() : new NoPurchaseProvider());
-const canUseFilter = (id: string) => DEV_UNLOCK || entitlements.canUse(id);
+// 웹은 모든 필터를 무료로 연다. (유료 필터는 앱에서 판매 — 웹 판매 정책은 미정, PRD 14장)
+const canUseFilter = (_id: string) => true;
 
 const state = {
   img: null as HTMLImageElement | null,
@@ -49,6 +49,8 @@ const state = {
   restColors: [] as RGB[],
   picking: false,
   restOverlay: null as HTMLCanvasElement | null,
+  /** 다음 악보를 만들 때 사진 복잡함에 맞춰 빠르기를 정한다 (필터 기준 빠르기) */
+  photoTempoBase: null as number | null,
 };
 /** 메타정보를 적용하기 전 설정 ('이전 설정으로' 되돌릴 때 사용) */
 let beforeMeta: Settings | null = null;
@@ -90,6 +92,9 @@ function settings(): Settings {
     unit: isUnit(els.unit.value) ? els.unit.value : '8n',
     instrument: els.instrument.value,
     filter: state.filter,
+    key: els.key.value === 'auto' ? 'auto' : Number(els.key.value),
+    mode: (els.mode.value as Mode | 'auto'),
+    strength: Number(els.strength.value),
   };
 }
 
@@ -127,6 +132,13 @@ function applySettings(s: Partial<Settings>) {
     els.instrument.value = s.instrument;
     player.loadInstrument(s.instrument);
   }
+  if (s.key !== undefined) els.key.value = String(s.key);
+  if (s.mode !== undefined) els.mode.value = s.mode;
+  if (s.strength !== undefined) {
+    els.strength.value = String(s.strength);
+    els.strengthLabel.textContent = `${s.strength}%`;
+    player.setStrength(s.strength);
+  }
   if (s.filter) setFilter(s.filter);
   updateInfo();
 }
@@ -136,6 +148,9 @@ function currentMeta(): BitsoriMeta {
     app: META_APP,
     version: META_VERSION,
     ...settings(),
+    // 자동이었어도 실제로 쓴 조·장단조를 저장한다 — 다시 열면 같은 멜로디가 나온다
+    key: state.score!.key,
+    mode: state.score!.mode,
     restColors: state.restColors.map(({ r, g, b }) => ({ r, g, b })),
     length: state.score!.length,
     lines: state.score!.lineCount,
@@ -150,15 +165,12 @@ function setFilter(id: string) {
   renderFilters();
 }
 
-/** 필터 칩을 눌렀을 때: 필터 + 어울리는 설정을 함께 적용 */
+/** 필터 칩을 눌렀을 때: 필터 + 어울리는 설정을 함께 적용 (조·장단조는 다시 사진에 맡기고, 빠르기는 사진에 맞춘다) */
 function chooseFilter(id: string) {
   const f = getFilter(id);
-  if (!canUseFilter(f.id)) {
-    els.filterInfo.textContent = `${f.emoji} ${f.label} — 빛소리 앱에서 구매할 수 있는 필터예요. (${f.description})`;
-    els.filterInfo.classList.add('locked');
-    return;
-  }
-  applySettings({ ...f.suggested, filter: f.id });
+  if (!canUseFilter(f.id)) return;
+  applySettings({ ...f.suggested, filter: f.id, key: 'auto', mode: 'auto' });
+  state.photoTempoBase = f.suggested.bpm ?? null;
   if (state.img) rebuildAll();
 }
 
@@ -181,8 +193,35 @@ function renderFilters() {
     els.filters.appendChild(b);
   }
   const f = getFilter(state.filter);
-  els.filterInfo.classList.remove('locked');
   els.filterInfo.textContent = `${f.emoji} ${f.label} — ${f.description}`;
+  // 원본 필터는 조·반주가 없고, 장단조를 고정한 필터는 고를 수 없다
+  const plain = f.scale === 'chromatic';
+  els.filterControls.setAttribute('aria-disabled', String(plain));
+  els.strength.disabled = plain || !f.template.length;
+  els.key.disabled = plain;
+  els.mode.disabled = plain || f.mode !== 'auto';
+  if (f.mode !== 'auto') els.mode.title = `${f.label} 필터는 ${f.mode === 'major' ? '장조' : '단조'}로 고정이에요`;
+  else els.mode.removeAttribute('title');
+}
+
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+
+/** 이 사진에서 정해진 조·코드 진행 */
+function updatePhotoInfo() {
+  const score = state.score;
+  const f = getFilter(state.filter);
+  if (!score || f.scale === 'chromatic') {
+    els.photoInfo.textContent = score ? '원본 필터: 반음 12개를 그대로 써요.' : '';
+    return;
+  }
+  const s = settings();
+  const auto = [s.key === 'auto' ? '색' : '', s.mode === 'auto' && f.mode === 'auto' ? '밝기' : ''].filter(Boolean);
+  const chords = arrange(score, s.unit, f, { strength: s.strength }).chords
+    .slice(0, 8)
+    .map((c) => (c.tones[1] === 3 ? ROMAN[c.degree - 1].toLowerCase() : ROMAN[c.degree - 1]));
+  els.photoInfo.textContent =
+    `이 사진 → ${keyLabel(score.key, score.mode)}${auto.length ? ` (사진의 ${auto.join('·')}에서 정함)` : ''}` +
+    (chords.length ? ` · 코드 ${chords.join('–')}${score.totalSteps > 0 ? '…' : ''}` : '');
 }
 
 // ---------- 재생 ----------
@@ -272,6 +311,11 @@ function rebuildAll() {
 function rebuildScore(keepPlaying = true) {
   if (!state.sampled) return;
   state.score = buildScore(state.sampled.sample, settings());
+  if (state.photoTempoBase !== null) {
+    // 사진이 복잡할수록 조금 빠르게
+    applySettings({ bpm: tempoFromPhoto(state.photoTempoBase, state.score.features) });
+    state.photoTempoBase = null;
+  }
   player.setScore(state.score, keepPlaying);
   els.seek.max = String(state.score.totalSteps - 1);
   state.stepIndex = Math.min(state.stepIndex, state.score.totalSteps - 1);
@@ -279,6 +323,7 @@ function rebuildScore(keepPlaying = true) {
   draw();
   updateTime();
   updateInfo();
+  updatePhotoInfo();
   updateEstimate();
   if (player.state === 'stopped') setStatus(readyText());
   updateTransportUI();
@@ -371,6 +416,7 @@ function showBanner(text: string, canReset: boolean) {
 function describeMeta(s: Partial<Settings>) {
   const f = getFilter(s.filter);
   const parts = [`${f.emoji} ${f.label}`, s.direction === 'vertical' ? '세로' : '가로', `${s.chord}화음`, `${s.startOct}~${s.endOct}옥타브`, `${s.bpm}BPM`];
+  if (f.scale !== 'chromatic' && typeof s.key === 'number' && s.mode && s.mode !== 'auto') parts.splice(1, 0, keyLabel(s.key, s.mode));
   if (s.restColors?.length) parts.push(`쉼표 색 ${s.restColors.length}개`);
   return parts.join(' · ');
 }
@@ -385,7 +431,7 @@ async function savePng() {
 
 function saveMidi() {
   const meta = currentMeta();
-  const bytes = scoreToMidi(state.score!, { bpm: meta.bpm, unit: meta.unit, meta, title: baseName(state.fileName), filter: meta.filter });
+  const bytes = scoreToMidi(state.score!, { bpm: meta.bpm, unit: meta.unit, meta, title: baseName(state.fileName), filter: meta.filter, strength: meta.strength });
   download(new Blob([bytes as BlobPart], { type: 'audio/midi' }), `${baseName(state.fileName)}-bitsori.mid`);
 }
 
@@ -411,18 +457,19 @@ async function openFile(file: File | Blob, name?: string) {
     if (!els.metaBanner.hidden && beforeMeta && !els.metaResetBtn.hidden) applySettings(beforeMeta);
     beforeMeta = { ...settings(), restColors: state.restColors.slice() };
     const s = settingsFromMeta(meta);
+    state.photoTempoBase = null; // 저장된 빠르기를 그대로 쓴다
     applySettings({ restColors: [], ...s });
     const cell = clampInt(meta.cell ?? 1, 1, 64);
     state.cell = ow % cell === 0 ? cell : 1;
-    const f = getFilter(s.filter);
-    const note = canUseFilter(f.id) ? '' : ' (유료 필터로 만든 작품 — 감상은 무료예요)';
-    showBanner(`이 이미지에 저장된 설정을 적용했어요: ${describeMeta(s)}${note}`, true);
+    showBanner(`이 이미지에 저장된 설정을 적용했어요: ${describeMeta(s)}`, true);
   } else {
     if (!els.metaBanner.hidden && beforeMeta && !els.metaResetBtn.hidden) applySettings(beforeMeta);
     state.restColors = []; // 쉼표 색은 이미지마다 다르므로 새 사진에서는 비운다
     renderRestColors();
-    // 공유받은 작품의 유료 필터가 내 사진에 그대로 남지 않게
-    if (!canUseFilter(state.filter)) chooseFilter(DEFAULT_FILTER_ID);
+    // 새 사진: 조·장단조는 사진에 맡기고, 빠르기는 사진에 맞춘다
+    applySettings({ key: 'auto', mode: 'auto' });
+    const base = getFilter(state.filter).suggested.bpm;
+    state.photoTempoBase = base ?? null;
     const pixels = imagePixels(img);
     state.cell = pixels ? detectCellSize(pixels) : 1;
     showBanner(state.cell > 1 ? `픽셀 아트로 보여서 ${state.cell}×${state.cell} 블록을 1칸으로 읽었어요.` : '', false);
@@ -557,6 +604,16 @@ export function initPlayerTab() {
     updateEstimate();
     updateTime();
   });
+  els.strength.addEventListener('input', () => {
+    els.strengthLabel.textContent = `${els.strength.value}%`;
+  });
+  els.strength.addEventListener('change', () => {
+    player.setStrength(Number(els.strength.value));
+    updatePhotoInfo();
+  });
+  // 조·장단조가 바뀌면 멜로디 음이 바뀌지만 칸 배치는 같아서 재생을 이어간다
+  [els.key, els.mode].forEach((sel) => sel.addEventListener('change', () => rebuildScore()));
+
   els.instrument.addEventListener('change', () => {
     player.pause();
     player.loadInstrument(els.instrument.value);
@@ -579,7 +636,6 @@ export function initPlayerTab() {
     if (player.state === 'playing') player.pause();
     else play();
   });
-  entitlements.onChange(renderFilters);
   updateTransportUI();
 }
 

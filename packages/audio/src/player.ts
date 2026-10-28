@@ -29,6 +29,7 @@ export class ScorePlayer {
   private filter: FilterDef = getFilter('none');
   private unit: Unit = '8n';
   private bpm = 120;
+  private strength = 70;
   private backing = new Map<number, StepBacking>();
   private repeatId: number | null = null;
   private finishing = false;
@@ -70,6 +71,12 @@ export class ScorePlayer {
   setFilter(id: string) {
     this.filter = getFilter(id);
     if (this.reverb) this.reverb.wet.value = this.filter.reverb;
+    this.rebuildBacking();
+  }
+
+  /** 필터 강도 0~100 */
+  setStrength(strength: number) {
+    this.strength = strength;
     this.rebuildBacking();
   }
 
@@ -172,7 +179,7 @@ export class ScorePlayer {
   private rebuildBacking() {
     this.backing.clear();
     if (!this.score) return;
-    const a = arrange(this.score.totalSteps, this.unit, this.filter);
+    const a = arrange(this.score, this.unit, this.filter, { strength: this.strength });
     const slot = (step: number) => {
       let s = this.backing.get(step);
       if (!s) this.backing.set(step, (s = { bass: [], pad: [], drums: [] }));
@@ -208,8 +215,9 @@ export class ScorePlayer {
     const sec = Tone.Time(this.unit).toSeconds();
     const events = score.starts[this.stepIndex];
     if (events && this.instrument) {
-      const velocity = Math.max(0.25, Math.min(0.8, 0.85 / Math.sqrt(events.length)));
-      for (const e of events) this.instrument.triggerAttackRelease(e.note, e.dur * sec, time, velocity);
+      // 픽셀 채도로 정한 세기 × 동시에 울리는 음이 많으면 조금씩 작게
+      const share = Math.min(1, 1.1 / Math.sqrt(events.length));
+      for (const e of events) this.instrument.triggerAttackRelease(e.note, e.dur * sec, time, e.velocity * share);
     }
 
     const b = this.backing.get(this.stepIndex);

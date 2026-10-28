@@ -3,6 +3,7 @@ export * from './pixels';
 export * from './settings';
 export * from './filters';
 export * from './arrange';
+export * from './analyze';
 export * from './meta';
 export * from './score';
 export * from './midi-file';
