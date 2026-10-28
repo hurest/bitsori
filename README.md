@@ -73,7 +73,7 @@ iOS는 `ios/App/App/Info.plist`에 카메라 권한 문구(`NSCameraUsageDescrip
 
 ## 라이선스·출처
 
-- 피아노: Salamander Grand Piano V3 by Alexander Holm
+- 피아노: Salamander Grand Piano V2 by Alexander Holm
 - 기타·바이올린·하프·실로폰: [tonejs-instruments](https://github.com/nbrosowsky/tonejs-instruments) by Nicholaus P. Brosowsky
 
 모두 [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)이며 자세한 내용은 `packages/audio/samples/ATTRIBUTION.md`에 있다.
