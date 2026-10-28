@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0b0a12" />
+  <title>빛소리</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🌈%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <!-- 카메라 -->
+  <section id="cameraScreen" class="screen camera">
+    <video id="video" playsinline muted autoplay></video>
+    <div id="cameraFallback" class="fallback" hidden>
+      <p id="cameraMessage">카메라를 쓸 수 없어요.</p>
+      <button id="fallbackGalleryBtn" class="pill" type="button">사진 고르기</button>
+    </div>
+    <header class="topbar">
+      <span class="brand">빛소리</span>
+      <button id="libraryBtn" class="icon-btn" type="button" aria-label="보관함">▦</button>
+    </header>
+    <div class="bottom">
+      <div class="filter-strip" data-role="filters" aria-label="필터"></div>
+      <div class="shutter-row">
+        <button id="galleryBtn" class="icon-btn" type="button" aria-label="갤러리에서 고르기">🖼</button>
+        <button id="shutterBtn" class="shutter" type="button" aria-label="찍기"></button>
+        <button id="flipBtn" class="icon-btn" type="button" aria-label="카메라 전환">⟲</button>
+      </div>
+    </div>
+    <input id="galleryInput" type="file" accept="image/*" hidden />
+  </section>
+
+  <!-- 결과 -->
+  <section id="resultScreen" class="screen result" hidden>
+    <header class="topbar">
+      <button id="backBtn" class="icon-btn" type="button" aria-label="다시 찍기">✕</button>
+      <span id="resultTitle" class="brand">빛소리</span>
+      <button id="saveBtn" class="icon-btn" type="button" aria-label="저장·공유">⤓</button>
+    </header>
+    <div class="stage">
+      <canvas id="view"></canvas>
+    </div>
+    <p id="resultNote" class="note"></p>
+    <div class="bottom">
+      <div class="filter-strip" data-role="filters" aria-label="필터"></div>
+      <div class="play-row">
+        <span id="timeLabel" class="time">0:00</span>
+        <button id="playBtn" class="play" type="button" aria-label="재생">▶</button>
+        <span id="totalLabel" class="time">0:00</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 보관함 -->
+  <section id="libraryScreen" class="screen library" hidden>
+    <header class="topbar">
+      <button id="libraryBackBtn" class="icon-btn" type="button" aria-label="닫기">✕</button>
+      <span class="brand">보관함</span>
+      <span class="icon-btn" aria-hidden="true"></span>
+    </header>
+    <p id="libraryEmpty" class="note">아직 저장한 노래가 없어요.</p>
+    <div id="libraryGrid" class="grid"></div>
+    <p class="credits">피아노 소리: Salamander Grand Piano V3 by Alexander Holm (CC BY 3.0)</p>
+  </section>
+
+  <!-- 유료 필터 구매 -->
+  <div id="paywall" class="sheet-backdrop" hidden>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="paywallTitle">
+      <div id="paywallEmoji" class="sheet-emoji"></div>
+      <h2 id="paywallTitle"></h2>
+      <p id="paywallDesc" class="note"></p>
+      <button id="buyBtn" class="pill primary" type="button">구매하기</button>
+      <button id="restoreBtn" class="pill" type="button">구매 복원</button>
+      <button id="paywallClose" class="link" type="button">닫기</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "@bitsori/audio",
+  "version": "0.1.0",
+  "private": true,
+  "description": "빛소리 재생기 — 악보·필터 반주 재생, 악기 목록 (Tone.js, 웹·앱 공용)",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./vite-plugin": "./vite-plugin.mjs"
+  },
+  "files": ["src", "samples", "vite-plugin.mjs"],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@bitsori/core": "workspace:*",
+    "tone": "14.8.49"
+  }
+}

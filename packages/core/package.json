@@ -1,0 +1,12 @@
+{
+  "name": "@bitsori/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "빛소리 변환 엔진 — 이미지↔악보, MIDI, PNG 메타정보 (브라우저·Node 공용, DOM 의존 없음)",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

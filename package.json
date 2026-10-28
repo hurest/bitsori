@@ -1,0 +1,20 @@
+{
+  "name": "bitsori",
+  "private": true,
+  "description": "빛소리 — 사진의 픽셀을 음악으로, 음악을 다시 픽셀로",
+  "packageManager": "pnpm@10.7.1",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev:web": "pnpm --filter @bitsori/web dev",
+    "dev:mobile": "pnpm --filter @bitsori/mobile dev",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0",
+    "vite": "^6.3.0",
+    "vitest": "^3.1.0"
+  }
+}

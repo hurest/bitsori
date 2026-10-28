@@ -1,0 +1,14 @@
+{
+  "name": "@bitsori/browser",
+  "version": "0.1.0",
+  "private": true,
+  "description": "빛소리 브라우저 공용 기능 — 이미지 읽기·저장, 재생 위치 그리기, 이용 권한(유료 필터)",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@bitsori/core": "workspace:*"
+  }
+}

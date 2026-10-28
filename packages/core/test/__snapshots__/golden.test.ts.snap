@@ -1,0 +1,57 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden > 기본 설정 1`] = `
+{
+  "digest": "76041f88",
+  "notes": 167,
+  "steps": 672,
+}
+`;
+
+exports[`golden > 필터: 로파이 1`] = `
+{
+  "digest": "72bb9264",
+  "notes": 163,
+  "steps": 352,
+}
+`;
+
+exports[`golden > 필터: 몽환 1`] = `
+{
+  "digest": "8cb55d3c",
+  "notes": 163,
+  "steps": 224,
+}
+`;
+
+exports[`golden > 필터: 시네마 1`] = `
+{
+  "digest": "8634c815",
+  "notes": 163,
+  "steps": 224,
+}
+`;
+
+exports[`golden > 필터: 오르골 1`] = `
+{
+  "digest": "7f740903",
+  "notes": 163,
+  "steps": 672,
+}
+`;
+
+exports[`golden > 필터: 원본 1`] = `
+{
+  "digest": "76041f88",
+  "notes": 167,
+  "steps": 672,
+}
+`;
+
+exports[`golden > 필터: 팝 1`] = `
+{
+  "digest": "7857279a",
+  "notes": 161,
+  "steps": 352,
+}
+`;

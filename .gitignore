@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.turbo/
+*.log
+.DS_Store
+# Capacitor 네이티브 빌드 산출물
+apps/mobile/ios/App/Pods/
+apps/mobile/ios/App/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/app/build/
+apps/mobile/android/build/

@@ -1,0 +1,27 @@
+{
+  "name": "@bitsori/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "빛소리 카메라 앱 (Capacitor → iOS / Android)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "typecheck": "tsc -p tsconfig.json",
+    "cap:sync": "vite build && cap sync",
+    "cap:ios": "cap open ios",
+    "cap:android": "cap open android"
+  },
+  "dependencies": {
+    "@bitsori/audio": "workspace:*",
+    "@bitsori/browser": "workspace:*",
+    "@bitsori/core": "workspace:*",
+    "@capacitor/core": "^8.5.0"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
+    "@vitejs/plugin-basic-ssl": "^2.3.0"
+  }
+}

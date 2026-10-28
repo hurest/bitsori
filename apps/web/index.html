@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>빛소리 Bitsori</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🌈%3C/text%3E%3C/svg%3E" />
+  
+</head>
+<body>
+  <header class="top">
+    <h1><span class="rainbow">빛소리</span> <small class="brand-en">Bitsori</small></h1>
+    <p class="tagline">사진의 픽셀을 소리로, 음악을 다시 픽셀로.</p>
+    <nav class="tabs" role="tablist">
+      <button class="tab active" type="button" role="tab" data-tab="playerTab" aria-selected="true">사진 → 노래</button>
+      <button class="tab" type="button" role="tab" data-tab="midiTab" aria-selected="false">MIDI → 사진</button>
+    </nav>
+  </header>
+
+  <main id="playerTab" class="layout">
+    <!-- 왼쪽: 이미지 & 재생 -->
+    <section class="stage card">
+      <div id="dropzone" class="dropzone">
+        <input id="fileInput" type="file" accept="image/*" hidden />
+        <div class="dropzone-inner">
+          <p class="drop-title">사진을 끌어다 놓거나</p>
+          <div class="drop-actions">
+            <button id="pickBtn" class="btn primary" type="button">사진 선택</button>
+            <button id="sampleBtn" class="btn" type="button">샘플 이미지</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="viewer" class="viewer" hidden>
+        <div id="metaBanner" class="banner" hidden>
+          <span id="metaText"></span>
+          <button id="metaResetBtn" class="btn small" type="button">이전 설정으로</button>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="view"></canvas>
+        </div>
+        <p id="hint" class="hint">이미지를 클릭하면 그 위치부터 재생해요.</p>
+
+        <div class="transport">
+          <button id="playBtn" class="btn primary play" type="button" disabled>▶ 재생</button>
+          <button id="stopBtn" class="btn" type="button" disabled>■ 정지</button>
+          <input id="seek" class="seek" type="range" min="0" max="0" value="0" step="1" />
+          <span id="timeLabel" class="time">0:00 / 0:00</span>
+        </div>
+        <div class="status-row">
+          <span id="status" class="status"></span>
+          <div class="row-actions">
+            <button id="savePngBtn" class="btn small" type="button" disabled title="지금 변환에 쓰는 픽셀 이미지를 설정과 함께 PNG로 저장">💾 PNG 저장</button>
+            <button id="saveMidiBtn" class="btn small" type="button" disabled title="지금 노래를 MIDI 파일로 저장">🎼 MIDI 저장</button>
+            <button id="changeBtn" class="btn small" type="button">다른 사진</button>
+          </div>
+        </div>
+        <p class="info save-note">PNG에는 화음·옥타브·속도·쉼표 색 같은 설정이 함께 저장돼서, 다시 열면 같은 노래로 재생돼요.</p>
+      </div>
+    </section>
+
+    <!-- 오른쪽: 설정 -->
+    <aside class="panel">
+      <section class="card">
+        <h2>필터 <small class="h2-sub">(음계 + 반주 · 고르면 어울리는 설정도 함께 바뀌어요)</small></h2>
+        <div id="filters" class="filter-chips" role="radiogroup" aria-label="필터"></div>
+        <p id="filterInfo" class="info filter-info"></p>
+      </section>
+
+      <section class="card size-card">
+        <h2>이미지 크기 &amp; 예상 시간</h2>
+        <div class="size-grid">
+          <div class="size-controls">
+            <label class="field">
+              <span>가로 픽셀 <b id="sizeLabel">-</b></span>
+              <input id="sizeRange" type="range" min="1" max="1" value="1" disabled />
+            </label>
+            <div id="presets" class="presets"></div>
+          </div>
+          <div class="estimate">
+            <span class="estimate-label">예상 재생 시간</span>
+            <span id="estimate" class="estimate-value">-</span>
+            <span id="estimateOrig" class="estimate-sub"></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>재생 방식 &amp; 음역</h2>
+        <div class="field">
+          <span>재생 방향</span>
+          <div class="segmented" role="radiogroup">
+            <label><input type="radio" name="direction" value="horizontal" checked /><span>가로 →</span></label>
+            <label><input type="radio" name="direction" value="vertical" /><span>세로 ↓</span></label>
+          </div>
+        </div>
+        <label class="field">
+          <span>화음 수 <small id="chordHint">(한 번에 소리 낼 행 수)</small></span>
+          <input id="chord" type="number" min="1" max="16" value="1" />
+        </label>
+        <div class="field-row">
+          <label class="field">
+            <span>시작 옥타브</span>
+            <select id="startOct"></select>
+          </label>
+          <label class="field">
+            <span>종료 옥타브</span>
+            <select id="endOct"></select>
+          </label>
+        </div>
+        <p id="rangeInfo" class="info"></p>
+      </section>
+
+      <section class="card">
+        <h2>소리</h2>
+        <label class="field">
+          <span>악기</span>
+          <select id="instrument"></select>
+        </label>
+        <div class="field-row">
+          <label class="field">
+            <span>빠르기 <b id="bpmLabel">120</b> BPM</span>
+            <input id="bpm" type="range" min="40" max="240" value="120" />
+          </label>
+          <label class="field">
+            <span>한 칸 길이</span>
+            <select id="unit">
+              <option value="4n">4분음표</option>
+              <option value="8n" selected>8분음표</option>
+              <option value="16n">16분음표</option>
+            </select>
+          </label>
+        </div>
+        <p class="info">같은 음이 이어지는 픽셀은 한 음으로 길게 이어서 연주해요.</p>
+      </section>
+
+      <section class="card">
+        <h2>쉼표 <small class="h2-sub">(소리 없는 구간)</small></h2>
+        <label class="field">
+          <span>어두운 픽셀 기준 밝기 <b id="restLabel">20</b> <small>(이보다 어두우면 쉼표, 0이면 끔)</small></span>
+          <input id="rest" type="range" min="0" max="160" value="20" />
+        </label>
+
+        <div class="field">
+          <span>쉼표 색 <small>(이미지에서 고른 색과 비슷한 픽셀은 쉼표)</small></span>
+          <div class="rest-colors">
+            <div id="restColors" class="color-chips"></div>
+            <button id="pickColorBtn" class="btn small" type="button" disabled>🎯 이미지에서 색 고르기</button>
+          </div>
+        </div>
+        <label class="field">
+          <span>색 허용 범위 <b id="toleranceLabel">12%</b></span>
+          <input id="tolerance" type="range" min="0" max="50" value="12" />
+        </label>
+        <label class="check">
+          <input id="showRests" type="checkbox" />
+          <span>이미지에 쉼표 위치 보기</span>
+        </label>
+        <p id="scoreInfo" class="info"></p>
+      </section>
+    </aside>
+  </main>
+
+  <main id="midiTab" class="layout" hidden>
+    <section class="stage card">
+      <div id="midiDropzone" class="dropzone">
+        <input id="midiInput" type="file" accept=".mid,.midi,audio/midi,audio/x-midi" hidden />
+        <div class="dropzone-inner">
+          <p class="drop-title">MIDI 파일(.mid)을 끌어다 놓거나</p>
+          <div class="drop-actions">
+            <button id="midiPickBtn" class="btn primary" type="button">MIDI 선택</button>
+          </div>
+          <p class="info drop-note">피아노 곡이 가장 잘 어울려요. 드럼 채널은 빼고 변환해요.</p>
+        </div>
+      </div>
+
+      <div id="midiViewer" class="viewer" hidden>
+        <div id="midiBanner" class="banner" hidden></div>
+        <div class="canvas-wrap">
+          <canvas id="midiView"></canvas>
+        </div>
+        <p id="midiSizeInfo" class="hint"></p>
+        <div class="transport">
+          <button id="midiPlayBtn" class="btn primary" type="button">▶ 이 이미지로 연주하기</button>
+          <button id="midiSaveBtn" class="btn" type="button">💾 PNG 저장</button>
+          <span class="spacer"></span>
+          <button id="midiChangeBtn" class="btn small" type="button">다른 MIDI</button>
+        </div>
+        <ul id="midiWarnings" class="warnings"></ul>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <section class="card">
+        <h2>곡 정보</h2>
+        <dl id="midiInfo" class="info-list"><div><dt>파일</dt><dd>-</dd></div></dl>
+      </section>
+
+      <section class="card">
+        <h2>변환 설정</h2>
+        <div class="field">
+          <span>재생 방향</span>
+          <div class="segmented" role="radiogroup">
+            <label><input type="radio" name="midiDirection" value="horizontal" checked /><span>가로 →</span></label>
+            <label><input type="radio" name="midiDirection" value="vertical" /><span>세로 ↓</span></label>
+          </div>
+        </div>
+        <label class="field">
+          <span>한 칸 길이 <small>(음을 이 단위로 맞춰요)</small></span>
+          <select id="midiUnit">
+            <option value="4n">4분음표</option>
+            <option value="8n">8분음표</option>
+            <option value="16n" selected>16분음표</option>
+          </select>
+        </label>
+        <div class="field">
+          <span class="field-head">화음 수 <label class="auto"><input id="midiChordAuto" type="checkbox" checked /> 자동</label></span>
+          <input id="midiChord" type="number" min="1" max="16" value="4" disabled />
+        </div>
+        <div class="field">
+          <span class="field-head">옥타브 범위 <label class="auto"><input id="midiOctAuto" type="checkbox" checked /> 자동</label></span>
+          <div class="field-row">
+            <select id="midiStartOct" disabled></select>
+            <select id="midiEndOct" disabled></select>
+          </div>
+        </div>
+        <div class="field">
+          <span class="field-head">한 줄 칸 수 <b id="midiLengthLabel"></b> <label class="auto"><input id="midiLengthAuto" type="checkbox" checked /> 자동</label></span>
+          <input id="midiLength" type="range" min="4" max="1024" value="64" disabled />
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>이미지 모양</h2>
+        <div class="field">
+          <span>색</span>
+          <div class="segmented" role="radiogroup">
+            <label><input type="radio" name="midiColor" value="rainbow" checked /><span>🌈 무지개</span></label>
+            <label><input type="radio" name="midiColor" value="gray" /><span>흑백</span></label>
+          </div>
+        </div>
+        <p class="info">무지개: 색상은 음 이름(도=빨강 … 시=보라), 밝기는 음 높이. 소리가 없는 칸은 검정이에요.</p>
+        <label class="field">
+          <span>확대 배율 <b id="midiCellLabel"></b> <small>(저장할 PNG 크기)</small></span>
+          <input id="midiCell" type="range" min="1" max="32" value="8" />
+        </label>
+      </section>
+    </aside>
+  </main>
+  <footer class="credits">피아노 소리: Salamander Grand Piano V3 by Alexander Holm (<a href="https://creativecommons.org/licenses/by/3.0/" target="_blank" rel="noopener">CC BY 3.0</a>)</footer>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
