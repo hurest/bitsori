@@ -66,7 +66,8 @@ export function countSteps(width: number, height: number, chord: number, directi
   return length * Math.ceil(lineCount / chord);
 }
 
-const MAX_RGB_DISTANCE = Math.sqrt(3 * 255 * 255);
+/** 쉼표 색 허용 범위(%)의 기준 거리 (RGB 공간 대각선) */
+export const MAX_RGB_DISTANCE = Math.sqrt(3 * 255 * 255);
 
 /** 픽셀별 쉼표 여부: 기준보다 어둡거나, 투명하거나, 쉼표 색과 비슷하면 1 */
 export function buildRestMask(sample: Sample, restThreshold: number, restColors: RGB[], colorTolerance: number) {

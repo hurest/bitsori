@@ -5,6 +5,7 @@ export * from './filters';
 export * from './arrange';
 export * from './analyze';
 export * from './instruments';
+export * from './scenes';
 export * from './meta';
 export * from './score';
 export * from './midi-file';

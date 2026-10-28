@@ -246,3 +246,14 @@ body {
 .filter-controls { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
 .filter-controls[aria-disabled="true"] { opacity: .5; }
 .photo-info { margin: 0; font-weight: 600; color: var(--text); }
+
+/* MIDI → 사진: 그림 스타일 */
+.style-chips { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-bottom: 10px; }
+.style-chip {
+  appearance: none; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--text);
+  font: inherit; font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.style-chip .emoji { font-size: 18px; line-height: 1.1; }
+.style-chip.active { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+.style-info { min-height: 1.5em; }

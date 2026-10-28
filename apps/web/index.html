@@ -199,6 +199,7 @@
         <p id="midiSizeInfo" class="hint"></p>
         <div class="transport">
           <button id="midiPlayBtn" class="btn primary" type="button">▶ 이 이미지로 연주하기</button>
+          <button id="midiDiceBtn" class="btn" type="button">🎲 다른 그림 뽑기</button>
           <button id="midiSaveBtn" class="btn" type="button">💾 PNG 저장</button>
           <span class="spacer"></span>
           <button id="midiChangeBtn" class="btn small" type="button">다른 MIDI</button>
@@ -248,15 +249,14 @@
       </section>
 
       <section class="card">
-        <h2>이미지 모양</h2>
-        <div class="field">
-          <span>색</span>
-          <div class="segmented" role="radiogroup">
-            <label><input type="radio" name="midiColor" value="rainbow" checked /><span>🌈 무지개</span></label>
-            <label><input type="radio" name="midiColor" value="gray" /><span>흑백</span></label>
-          </div>
-        </div>
-        <p class="info">무지개: 색상은 음 이름(도=빨강 … 시=보라), 밝기는 음 높이. 소리가 없는 칸은 검정이에요.</p>
+        <h2>이미지 모양 <small class="h2-sub">(색만 바뀌고 노래는 그대로예요)</small></h2>
+        <div id="midiStyles" class="style-chips" role="radiogroup" aria-label="그림 스타일"></div>
+        <p id="midiStyleInfo" class="info style-info"></p>
+        <label class="check">
+          <input id="midiColorRests" type="checkbox" checked />
+          <span>소리 없는 칸도 장면 색으로 칠하기</span>
+        </label>
+        <p id="midiRestNote" class="info"></p>
         <label class="field">
           <span>확대 배율 <b id="midiCellLabel"></b> <small>(저장할 PNG 크기)</small></span>
           <input id="midiCell" type="range" min="1" max="32" value="8" />

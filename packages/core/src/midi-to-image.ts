@@ -5,6 +5,7 @@
 //  4) 음 높이 → 밝기 (밝기 → 음 계산을 거꾸로), 쉼표 → 검정
 import { UNIT_BEATS, indexToBrightness, type Direction, type Unit } from './constants';
 import { pitchTable, type ScaleId } from './filters';
+import { sceneColorizer } from './scenes';
 import type { ParsedMidi } from './midi-file';
 import { luminance } from './pixels';
 
@@ -23,7 +24,8 @@ export interface Quantized {
   drums: number;
 }
 
-export type ColorMode = 'rainbow' | 'gray';
+/** rainbow: 색상 = 음 이름 / gray: 흑백 / scene: 무작위 풍경 장면으로 칠하기 (노래는 그대로) */
+export type ColorMode = 'rainbow' | 'gray' | 'scene';
 
 /**
  * 1) 박자 단위로 맞추기
@@ -168,6 +170,11 @@ export interface RenderOptions {
   /** 원래 이미지의 줄 수(메타정보). 알면 마지막 묶음의 빈 줄을 잘라낸다. */
   lines?: number;
   colorMode: ColorMode;
+  /**
+   * colorMode가 'scene'일 때: 장면 종류와 무작위 시드 (같은 시드면 같은 그림).
+   * restStyle 'color'면 쉼표 칸도 장면 색으로 칠하고, 결과의 restColors·colorTolerance를 메타정보에 저장해야 한다.
+   */
+  scene?: { id: string; seed: number; restStyle?: 'dark' | 'color'; colorTolerance?: number };
   restThreshold: number;
 }
 
@@ -191,6 +198,19 @@ export function render(o: RenderOptions) {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let i = 3; i < data.length; i += 4) data[i] = 255; // 기본 검정 = 쉼표
 
+  // 장면 색칠: 쉼표 칸도 '아주 어두운 장면 색'으로 칠한다 (밝기 < 쉼표 기준이라 계속 쉼표로 읽힌다)
+  const colorize = colorMode === 'scene' && o.scene
+    ? sceneColorizer(o.scene.id, o.scene.seed, width, height, {
+      restStyle: o.scene.restStyle ?? 'dark', restThreshold, colorTolerance: o.scene.colorTolerance,
+    })
+    : null;
+  const span = (256 - restThreshold) / noteCount;
+  if (colorize) {
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) data.set(colorize.rest(x, y), (y * width + x) * 4);
+    }
+  }
+
   let clamped = 0;
   const colorCache = new Map<number, [number, number, number]>();
   for (let v = 0; v < chord; v++) {
@@ -205,22 +225,28 @@ export function render(o: RenderOptions) {
         clamped++;
         idx = nearest(midi);
       }
-      const key = idx * 12 + (midi % 12);
-      let color = colorCache.get(key);
-      if (!color) {
-        color = noteColor(midi % 12, indexToBrightness(idx, restThreshold, noteCount), colorMode);
-        colorCache.set(key, color);
-      }
       const pos = s % length;
       const x = vertical ? line : pos;
       const y = vertical ? pos : line;
+      let color: [number, number, number] | undefined;
+      if (colorize) {
+        // 이 음의 밝기 칸 [lo, hi) 안에서 장면 색으로
+        color = colorize.note(x, y, restThreshold + idx * span, restThreshold + (idx + 1) * span);
+      } else {
+        const key = idx * 12 + (midi % 12);
+        color = colorCache.get(key);
+        if (!color) {
+          color = noteColor(midi % 12, indexToBrightness(idx, restThreshold, noteCount), colorMode === 'gray' ? 'gray' : 'rainbow');
+          colorCache.set(key, color);
+        }
+      }
       const p = (y * width + x) * 4;
       data[p] = color[0];
       data[p + 1] = color[1];
       data[p + 2] = color[2];
     }
   }
-  return { width, height, data, clamped, lineCount };
+  return { width, height, data, clamped, lineCount, restColors: colorize?.restColors ?? [] };
 }
 
 /** 곡 음역에 맞는 옥타브 (1 ~ 7 범위 안) */

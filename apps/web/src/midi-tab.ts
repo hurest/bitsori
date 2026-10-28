@@ -1,7 +1,7 @@
 // "MIDI → 사진" 탭
 import {
   DEFAULT_REST_THRESHOLD, MAX_CHORD, MAX_OCT, MIN_BPM, MAX_BPM, META_APP, META_VERSION, MIN_OCT, SOLFEGE, UNIT_BEATS,
-  clampInt, getFilter, isUnit, midiToImage as M, midiToName, parseMidi, scaleOf, settingsFromMeta,
+  SCENES, clampInt, getFilter, isUnit, midiToImage as M, midiToName, parseMidi, randomSceneId, scaleOf, settingsFromMeta,
   type ColorMode, type Direction, type ParsedMidi, type Quantized, type Unit,
 } from '@bitsori/core';
 import { baseName, canvasToPngBlob, download, pixelsToCanvas, upscale, viewScale } from '@bitsori/browser';
@@ -17,7 +17,17 @@ const els = {
   startOct: $<HTMLSelectElement>('midiStartOct'), endOct: $<HTMLSelectElement>('midiEndOct'), octAuto: $<HTMLInputElement>('midiOctAuto'),
   length: $<HTMLInputElement>('midiLength'), lengthAuto: $<HTMLInputElement>('midiLengthAuto'), lengthLabel: $('midiLengthLabel'),
   cell: $<HTMLInputElement>('midiCell'), cellLabel: $('midiCellLabel'),
+  diceBtn: $<HTMLButtonElement>('midiDiceBtn'), styles: $('midiStyles'), styleInfo: $('midiStyleInfo'),
+  colorRests: $<HTMLInputElement>('midiColorRests'), restNote: $('midiRestNote'),
 };
+
+/** 쉼표도 장면 색으로 칠할 때 쉼표 색 허용 범위(%) — 메타정보에 함께 저장된다 */
+const REST_TOLERANCE = 5;
+
+/** 그림 스타일: 풍경 장면(무작위 시드) / 무지개(색상 = 음 이름) / 흑백 */
+type Art = { mode: 'scene'; scene: string; seed: number } | { mode: 'rainbow' | 'gray' };
+const newSeed = () => Math.floor(Math.random() * 1e9);
+const randomArt = (except?: string): Art => ({ mode: 'scene', scene: randomSceneId(Math.random, except), seed: newSeed() });
 
 const state = {
   parsed: null as ParsedMidi | null,
@@ -25,6 +35,7 @@ const state = {
   quantized: null as { unit: Unit; q: Quantized } | null,
   result: null as { canvas: HTMLCanvasElement; meta: Record<string, unknown> } | null,
   cellAuto: true,
+  art: randomArt() as Art,
 };
 
 const radio = (name: string) => document.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)!.value;
@@ -47,6 +58,7 @@ async function openMidi(file: File) {
   state.fileName = file.name || 'midi';
   state.quantized = null;
   state.cellAuto = true;
+  state.art = randomArt(); // 처음부터 그림처럼 보이게
 
   // 빛소리가 저장한 MIDI면 원래 이미지 배치로, 아니면 곡을 분석해 자동으로
   const m = parsed.meta;
@@ -128,11 +140,17 @@ function convert() {
   const key = typeof saved.key === 'number' ? saved.key : 0;
   const scale = scaleOf(filter.scale, mode);
   const sameLayout = !!meta && meta.direction === direction && meta.chord === chord && meta.length === length;
+  // 쉼표도 장면 색: 어두운 픽셀 규칙을 끄고(0) 쉼표 색으로만 쉼표를 표시한다
+  const colorRests = state.art.mode === 'scene' && els.colorRests.checked;
+  const restThreshold = colorRests ? 0 : DEFAULT_REST_THRESHOLD;
   const img = M.render({
     grid, steps: q.steps, chord, startOct, endOct, direction, length,
     lines: sameLayout ? meta!.lines : undefined,
-    colorMode: radio('midiColor') as ColorMode,
-    restThreshold: DEFAULT_REST_THRESHOLD,
+    colorMode: state.art.mode as ColorMode,
+    scene: state.art.mode === 'scene'
+      ? { id: state.art.scene, seed: state.art.seed, restStyle: colorRests ? 'color' : 'dark', colorTolerance: REST_TOLERANCE }
+      : undefined,
+    restThreshold,
     scale,
     key: scale === 'chromatic' ? 0 : key,
   });
@@ -144,13 +162,19 @@ function convert() {
     meta: {
       app: META_APP, version: META_VERSION,
       direction, chord, length, lines: img.lineCount, startOct, endOct, bpm, unit,
-      restThreshold: DEFAULT_REST_THRESHOLD, restColors: [], colorTolerance: 12,
-      instrument: 'piano', filter: filter.id, key, mode, strength: saved.strength ?? 70, source: 'midi',
+      restThreshold, restColors: img.restColors, colorTolerance: colorRests ? REST_TOLERANCE : 12,
+      instrument: saved.instrument ?? 'piano', filter: filter.id, key, mode, strength: saved.strength ?? 70, source: 'midi',
+      art: state.art.mode === 'scene' ? `${state.art.scene}#${state.art.seed}` : state.art.mode,
     },
   };
 
   drawPreview(canvas);
   updateCell();
+  renderStyles();
+  els.colorRests.disabled = state.art.mode !== 'scene';
+  els.restNote.textContent = colorRests
+    ? '쉼표 색 3개를 PNG 설정에 함께 저장해서 다시 열어도 같은 노래예요. 단, SNS 업로드처럼 설정이 지워지면 쉼표 칸도 소리가 나요.'
+    : '소리 없는 칸은 아주 어두운 색이라, 설정이 지워져도 쉼표로 읽혀요.';
 
   const stepSec = (60 / bpm) * UNIT_BEATS[unit];
   const playSteps = Math.ceil(img.lineCount / chord) * length;
@@ -173,6 +197,40 @@ function convert() {
     els.warnings.appendChild(li);
   }
   els.playBtn.disabled = els.saveBtn.disabled = false;
+}
+
+function renderStyles() {
+  const art = state.art;
+  const options: { id: string; emoji: string; label: string }[] = [
+    ...SCENES,
+    { id: 'rainbow', emoji: '🌈', label: '무지개' },
+    { id: 'gray', emoji: '⬜', label: '흑백' },
+  ];
+  const current = art.mode === 'scene' ? art.scene : art.mode;
+  els.styles.innerHTML = '';
+  for (const o of options) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'style-chip';
+    b.classList.toggle('active', o.id === current);
+    b.setAttribute('role', 'radio');
+    b.setAttribute('aria-checked', String(o.id === current));
+    b.innerHTML = '<span class="emoji"></span><span></span>';
+    b.firstElementChild!.textContent = o.emoji;
+    b.children[1].textContent = o.label;
+    // 장면은 누를 때마다 새로운 배치로
+    b.addEventListener('click', () => {
+      state.art = o.id === 'rainbow' || o.id === 'gray' ? { mode: o.id } : { mode: 'scene', scene: o.id, seed: newSeed() };
+      convert();
+    });
+    els.styles.appendChild(b);
+  }
+  els.styleInfo.textContent =
+    art.mode === 'scene'
+      ? `${SCENES.find((s) => s.id === art.scene)?.emoji} ${SCENES.find((s) => s.id === art.scene)?.label} #${art.seed % 10000} — 색과 결은 장면에서, 밝기는 음에서 와요. 같은 장면을 다시 누르면 새 배치가 나와요.`
+      : art.mode === 'rainbow'
+        ? '🌈 무지개 — 색상은 음 이름(도=빨강 … 시=보라), 밝기는 음 높이예요.'
+        : '⬜ 흑백 — 밝기만으로 음을 보여 줘요.';
 }
 
 function drawPreview(canvas: HTMLCanvasElement) {
@@ -272,7 +330,12 @@ export function initMidiTab() {
     convert();
   });
   els.length.addEventListener('input', convert);
-  document.querySelectorAll('input[name="midiDirection"], input[name="midiColor"]').forEach((r) => r.addEventListener('change', convert));
+  document.querySelectorAll('input[name="midiDirection"]').forEach((r) => r.addEventListener('change', convert));
+  els.colorRests.addEventListener('change', convert);
+  els.diceBtn.addEventListener('click', () => {
+    state.art = randomArt(state.art.mode === 'scene' ? state.art.scene : undefined);
+    convert();
+  });
   els.cell.addEventListener('input', () => {
     state.cellAuto = false;
     if (state.result) updateCell();
